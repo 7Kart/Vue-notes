@@ -2,65 +2,86 @@
   <div class="notes">
     <div :class="{full:!grid}" class="note" v-for="(note, index) in notes" :key="index">
       <div :class="{full:!grid}" class="note-header">
-        <p v-show="activeField !== `${index}_title`" @click="edit(`${index}_title`, note.title)">{{note.title}}</p>
-        <input class="editable-field" v-show="activeField === `${index}_title`" type="text" @blur="unactiveField()" v-model="newValue"/>
+        <p
+          v-show="aditableNote != index || aditableField !='title'"
+          @click="edit(index, 'title', note.title)"
+        >{{note.title}}</p>
+        <input 
+          class="editable-field"
+          v-show="aditableNote == index && aditableField =='title'"
+          type="text"
+          @blur="reset()"
+          @keyup.esc="reset()"
+          @keyup.enter="saveChanges(index, 'title', newValue)"
+          v-model="newValue"
+          v-focus
+        >
         <p style="cursor:pointer;" @click="removeNote(index)">x</p>
       </div>
       <div class="note-body" :class="note.priority">
-        <p v-show="activeField !== `${index}_descr`" @click="edit(`${index}_descr`, note.descr)">{{note.descr}}</p>
-        <input class="editable-descr-field" v-show="activeField === `${index}_descr`" type="text" @blur="unactiveField()" v-model="newValue"/>
-        <span @click="edit(`${index}_date`)">{{note.date}}</span>
+        <p
+          v-show="aditableNote != index || aditableField !='descr'"
+          @click="edit(index, 'descr', note.descr)"
+        >{{note.descr}}</p>
+        <input
+          v-show="aditableNote == index && aditableField =='descr'"
+          class="editable-descr-field"
+          type="text"
+          v-model="newValue"
+          @blur="reset()"
+          @keyup.esc="reset()"
+          @keyup.enter="saveChanges(index, 'descr', newValue)"
+          v-focus
+        >
+        <span>{{note.date}}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+
 export default {
   props: {
     notes: {
       type: Array,
       required: true
     },
-    grid:{
-      type:Boolean,
+    grid: {
+      type: Boolean,
       required: true
     }
   },
-  data(){
+  data() {
     return {
-      activeField: null,
-      newValue: null
-    }
-  },
-  mounted(){
-    window.addEventListener('keydown', (e) => {
-      if(this.activeField){
-        if (e.key == 'Escape') {
-          this.activeField = null
-        }else if(e.key == 'Enter' && this.newValue.trim().length > 0){
-          let indexNote = 1*this.activeField.split("_")[0];
-          let fieldName = this.activeField.split("_")[1];
-          let editedNote = this.notes[indexNote];
-          editedNote[fieldName] = this.newValue;
-          editedNote.date = new Date(Date.now()).toLocaleString();          
-          this.activeField = null
-        }
-      }
-    }); 
+      newValue: null,
+      aditableNote: null,
+      aditableField: null
+    };
   },
   methods: {
+    edit(noteIndx, field, oldValue) {
+      this.aditableNote = noteIndx;
+      this.aditableField = field;
+      this.newValue = oldValue;
+    },
+    reset() {      
+      this.aditableNote = null;
+      this.aditableField = null;
+    },
     removeNote(index) {
-      this.$emit("removeNote", index);
+      this.$store.dispatch("removeNote", index);
     },
-    edit(id, currentValue){      
-      if(id){
-        this.activeField = id;
-        this.newValue = currentValue;     
+    saveChanges(index, field, newValue){
+      this.$store.dispatch("editNote", {index, field, newValue});
+      this.reset();
+    }
+  },
+  directives: {
+    focus: {
+      componentUpdated: function(el) {
+        el.focus();
       }
-    },
-    unactiveField(){
-      this.activeField = null;
     }
   }
 };
@@ -79,11 +100,11 @@ export default {
   padding: 18px 20px;
   margin-bottom: 20px;
   background-color: #ffffff;
-  transition: all .25s cubic-bezier(.02,.01,.47,1);
-  box-shadow: 0 30px 30px rgba(0,0,0,.02);
+  transition: all 0.25s cubic-bezier(0.02, 0.01, 0.47, 1);
+  box-shadow: 0 30px 30px rgba(0, 0, 0, 0.02);
   &:hover {
-    box-shadow: 0 30px 30px rgba(0,0,0,.04);
-    transform: translate(0,-6px);
+    box-shadow: 0 30px 30px rgba(0, 0, 0, 0.04);
+    transform: translate(0, -6px);
     transition-delay: 0s !important;
   }
   &.full {
@@ -123,7 +144,7 @@ export default {
     }
   }
 }
-.note-body{
+.note-body {
   p {
     margin: 20px 0;
     cursor: pointer;
@@ -133,7 +154,7 @@ export default {
     color: #999999;
   }
 
-  &.important span:before{
+  &.important span:before {
     content: "";
     display: inline-block;
     width: 11px;
@@ -142,7 +163,7 @@ export default {
     background-color: rgb(235, 220, 12);
   }
 
-  &.very-important span:before{
+  &.very-important span:before {
     content: "";
     display: inline-block;
     width: 11px;
@@ -150,19 +171,16 @@ export default {
     margin-right: 1%;
     background-color: crimson;
   }
-
 }
 
-.editable-field{
-  width: 100%;
+.editable-field {
+  width: 95%;
   margin-bottom: 0%;
   padding: 5px 5px;
 }
 
-.editable-descr-field{
-  width: 100%;
+.editable-descr-field {
   padding: 5px 5px;
-  margin: 13px 60% 15px 0;
+  margin: 13px 0 15px 0;
 }
-
 </style>
